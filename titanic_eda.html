@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Titanic EDA — Exploratory Data Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@300;400;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0a0e1a;
+    --deep: #0d1628;
+    --card: #111827;
+    --border: #1e2d45;
+    --gold: #c9a84c;
+    --gold-light: #e8c96a;
+    --ice: #7eb8d4;
+    --ice-light: #a8d4e8;
+    --red: #e05252;
+    --green: #4caf8a;
+    --text: #d4dde8;
+    --muted: #5a6b80;
+    --white: #f0f4f8;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--navy);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #060912 0%, #0a1525 40%, #0d1e35 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 60px 60px 50px;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse 60% 80% at 80% 50%, rgba(201,168,76,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 60% at 20% 80%, rgba(126,184,212,0.05) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  /* animated water lines */
+  .wave-bg {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--ice), transparent, var(--gold), transparent);
+    animation: shimmer 6s linear infinite;
+    opacity: 0.4;
+  }
+  @keyframes shimmer { from { background-position: 0 0; } to { background-position: 200% 0; } }
+
+  .hero-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 16px;
+    opacity: 0.8;
+  }
+
+  .hero h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2.5rem, 5vw, 4.5rem);
+    font-weight: 900;
+    color: var(--white);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+
+  .hero h1 span { color: var(--gold); }
+
+  .hero-sub {
+    font-size: 15px;
+    color: var(--muted);
+    max-width: 560px;
+    margin-bottom: 32px;
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+  }
+
+  .hstat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .hstat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--gold-light);
+    line-height: 1;
+  }
+
+  .hstat-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .hstat-divider {
+    width: 1px;
+    background: var(--border);
+    align-self: stretch;
+  }
+
+  /* MAIN LAYOUT */
+  .main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 48px 40px;
+    display: grid;
+    gap: 32px;
+  }
+
+  /* SECTION */
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+
+  .section-desc {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    transition: border-color 0.2s;
+  }
+
+  .card:hover { border-color: rgba(201,168,76,0.3); }
+
+  .card-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 16px;
+    opacity: 0.8;
+  }
+
+  /* GRID LAYOUTS */
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+  .grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; }
+
+  /* STAT CARDS */
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent, var(--gold));
+  }
+
+  .stat-card-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--white);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .stat-card-label {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .stat-card-detail {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--accent, var(--gold));
+  }
+
+  /* MISSING VALUE BARS */
+  .missing-row {
+    display: grid;
+    grid-template-columns: 120px 1fr 80px 60px;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(30,45,69,0.5);
+  }
+
+  .missing-row:last-child { border-bottom: none; }
+
+  .missing-col-name {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--ice-light);
+  }
+
+  .missing-bar-bg {
+    height: 8px;
+    background: rgba(30,45,69,0.8);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .missing-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1s ease;
+  }
+
+  .missing-count {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  .missing-pct {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    text-align: right;
+    font-weight: 600;
+  }
+
+  /* BAR CHARTS */
+  .bar-chart { display: flex; flex-direction: column; gap: 10px; }
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: 100px 1fr 60px;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .bar-row.sm { grid-template-columns: 80px 1fr 60px; }
+
+  .bar-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text);
+    text-align: right;
+  }
+
+  .bar-bg {
+    height: 28px;
+    background: rgba(30,45,69,0.6);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: rgba(255,255,255,0.7);
+    transition: width 1s ease;
+    min-width: 2px;
+  }
+
+  .bar-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--gold);
+    font-weight: 600;
+  }
+
+  /* SURVIVAL DONUT */
+  .donut-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .donut-wrap {
+    position: relative;
+    width: 160px;
+    height: 160px;
+  }
+
+  .donut-wrap svg { transform: rotate(-90deg); }
+
+  .donut-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .donut-pct {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--white);
+    line-height: 1;
+  }
+
+  .donut-sub {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .legend-items { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: rgba(30,45,69,0.4);
+    border-radius: 6px;
+  }
+
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .legend-text {
+    font-size: 12px;
+    color: var(--text);
+    margin-left: 8px;
+    flex: 1;
+  }
+
+  .legend-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--white);
+  }
+
+  /* COMPARISON CARDS */
+  .compare-grid { display: flex; flex-direction: column; gap: 8px; }
+
+  .compare-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(30,45,69,0.5);
+  }
+
+  .compare-row:last-child { border-bottom: none; }
+
+  .compare-label {
+    font-size: 12px;
+    color: var(--text);
+    width: 90px;
+    flex-shrink: 0;
+  }
+
+  .compare-bars { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+
+  .c-bar {
+    height: 14px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    padding: 0 6px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: rgba(255,255,255,0.8);
+    transition: width 1s ease;
+    min-width: 30px;
+  }
+
+  /* HISTOGRAM */
+  .histogram {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 100px;
+    padding-bottom: 24px;
+    position: relative;
+  }
+
+  .hist-bar {
+    flex: 1;
+    background: var(--bar-color, var(--ice));
+    border-radius: 2px 2px 0 0;
+    min-height: 2px;
+    transition: height 1s ease;
+    position: relative;
+    cursor: pointer;
+  }
+
+  .hist-bar:hover { opacity: 0.8; }
+
+  .hist-bar .tooltip {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--deep);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 10;
+  }
+
+  .hist-bar:hover .tooltip { opacity: 1; }
+
+  .hist-axis {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+  }
+
+  /* CORRELATION TABLE */
+  .corr-table { width: 100%; border-collapse: collapse; }
+
+  .corr-table th {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .corr-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(30,45,69,0.4);
+    font-size: 13px;
+  }
+
+  .corr-table tr:last-child td { border-bottom: none; }
+
+  .corr-bar-cell { min-width: 120px; }
+
+  .corr-inline-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 16px;
+  }
+
+  .corr-pos, .corr-neg {
+    height: 12px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .corr-pos { background: var(--green); }
+  .corr-neg { background: var(--red); }
+
+  .corr-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  /* INSIGHT CARDS */
+  .insight {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent, var(--gold));
+    border-radius: 0 8px 8px 0;
+    padding: 16px 20px;
+  }
+
+  .insight-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--white);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .insight-icon {
+    width: 20px; height: 20px;
+    background: var(--accent, var(--gold));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--navy);
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+
+  .insight-text {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* STATS TABLE */
+  .stats-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+
+  .stats-table th {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .stats-table th:first-child { text-align: left; }
+
+  .stats-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(30,45,69,0.3);
+    text-align: right;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text);
+  }
+
+  .stats-table td:first-child {
+    text-align: left;
+    color: var(--ice-light);
+    font-weight: 500;
+  }
+
+  .stats-table tr:last-child td { border-bottom: none; }
+
+  /* BADGE */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+
+  .badge-gold { background: rgba(201,168,76,0.15); color: var(--gold-light); }
+  .badge-ice { background: rgba(126,184,212,0.15); color: var(--ice-light); }
+  .badge-red { background: rgba(224,82,82,0.15); color: #f08080; }
+  .badge-green { background: rgba(76,175,138,0.15); color: #6dcba8; }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .hero { padding: 40px 24px 36px; }
+    .main { padding: 32px 20px; }
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(2, 1fr); }
+    .grid-2, .grid-2-1, .grid-1-2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="wave-bg"></div>
+  <div class="hero-tag">Exploratory Data Analysis · RMS Titanic Passenger Dataset</div>
+  <h1>The <span>Titanic</span><br>Data Story</h1>
+  <p class="hero-sub">A deep dive into the factors that shaped survival aboard history's most famous maritime disaster — April 15, 1912.</p>
+  <div class="hero-stats">
+    <div class="hstat">
+      <div class="hstat-num">891</div>
+      <div class="hstat-label">Passengers</div>
+    </div>
+    <div class="hstat-divider"></div>
+    <div class="hstat">
+      <div class="hstat-num">12</div>
+      <div class="hstat-label">Features</div>
+    </div>
+    <div class="hstat-divider"></div>
+    <div class="hstat">
+      <div class="hstat-num">38.4%</div>
+      <div class="hstat-label">Survived</div>
+    </div>
+    <div class="hstat-divider"></div>
+    <div class="hstat">
+      <div class="hstat-num">866</div>
+      <div class="hstat-label">Missing Values</div>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ── 1. DATASET STRUCTURE ── -->
+  <div>
+    <h2 class="section-title">Dataset Structure</h2>
+    <p class="section-desc">12 columns capturing passenger demographics, class, and fate.</p>
+    <div class="grid-4">
+      <div class="stat-card" style="--accent: var(--ice)">
+        <div class="stat-card-num">891</div>
+        <div class="stat-card-label">Total Rows</div>
+        <div class="stat-card-detail">Training records</div>
+      </div>
+      <div class="stat-card" style="--accent: var(--gold)">
+        <div class="stat-card-num">12</div>
+        <div class="stat-card-label">Columns</div>
+        <div class="stat-card-detail">7 numeric · 5 categorical</div>
+      </div>
+      <div class="stat-card" style="--accent: var(--green)">
+        <div class="stat-card-num">342</div>
+        <div class="stat-card-label">Survivors</div>
+        <div class="stat-card-detail">38.4% of passengers</div>
+      </div>
+      <div class="stat-card" style="--accent: var(--red)">
+        <div class="stat-card-num">549</div>
+        <div class="stat-card-label">Did Not Survive</div>
+        <div class="stat-card-detail">61.6% of passengers</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 2. MISSING VALUES ── -->
+  <div>
+    <h2 class="section-title">Missing Value Analysis</h2>
+    <p class="section-desc">Three columns carry missing data — Cabin is severely incomplete at 77.1%.</p>
+    <div class="grid-1-2" style="align-items: start;">
+      <div class="card">
+        <div class="card-title">Missing By Column</div>
+        <div style="display:flex;flex-direction:column;gap:0">
+          <!-- Column, count, pct, color -->
+          <div class="missing-row">
+            <span class="missing-col-name">Cabin</span>
+            <div class="missing-bar-bg"><div class="missing-bar-fill" style="width:77.1%;background:var(--red)"></div></div>
+            <span class="missing-count">687</span>
+            <span class="missing-pct" style="color:var(--red)">77.1%</span>
+          </div>
+          <div class="missing-row">
+            <span class="missing-col-name">Age</span>
+            <div class="missing-bar-bg"><div class="missing-bar-fill" style="width:19.9%;background:var(--gold)"></div></div>
+            <span class="missing-count">177</span>
+            <span class="missing-pct" style="color:var(--gold)">19.9%</span>
+          </div>
+          <div class="missing-row">
+            <span class="missing-col-name">Embarked</span>
+            <div class="missing-bar-bg"><div class="missing-bar-fill" style="width:0.5%;background:var(--ice)"></div></div>
+            <span class="missing-count">2</span>
+            <span class="missing-pct" style="color:var(--ice)">0.2%</span>
+          </div>
+          <div class="missing-row">
+            <span class="missing-col-name" style="color:var(--muted)">All Others</span>
+            <div class="missing-bar-bg"><div class="missing-bar-fill" style="width:0%;background:var(--muted)"></div></div>
+            <span class="missing-count" style="color:var(--muted)">0</span>
+            <span class="missing-pct" style="color:var(--muted)">0%</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="insight" style="--accent: var(--red)">
+          <div class="insight-title"><div class="insight-icon" style="background:var(--red)">!</div>Cabin: Critically Missing</div>
+          <div class="insight-text">77.1% of Cabin values are missing — this column cannot be used directly for modeling without extensive imputation strategies. The missing pattern likely correlates with lower-class passengers who had shared or unrecorded berths.</div>
+        </div>
+        <div class="insight" style="--accent: var(--gold)">
+          <div class="insight-title"><div class="insight-icon">~</div>Age: Imputable</div>
+          <div class="insight-text">19.9% of Age values are missing (177 records). Median imputation (28 years) or model-based imputation by Pclass/Sex is recommended. Age is a strong predictor, so handling this carefully matters.</div>
+        </div>
+        <div class="insight" style="--accent: var(--ice)">
+          <div class="insight-title"><div class="insight-icon" style="background:var(--ice)">✓</div>Embarked: Negligible</div>
+          <div class="insight-text">Only 2 Embarked values are missing — easily filled with mode ("S" = Southampton), which covers 72.2% of all passengers.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3. STATISTICAL SUMMARY ── -->
+  <div>
+    <h2 class="section-title">Statistical Summary — Numerical Columns</h2>
+    <p class="section-desc">Descriptive statistics for all numerical features.</p>
+    <div class="card">
+      <div class="card-title">Descriptive Statistics</div>
+      <div style="overflow-x:auto">
+        <table class="stats-table">
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th>Count</th>
+              <th>Mean</th>
+              <th>Std Dev</th>
+              <th>Min</th>
+              <th>25%</th>
+              <th>Median</th>
+              <th>75%</th>
+              <th>Max</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Survived <span class="badge badge-gold">target</span></td>
+              <td>891</td><td>0.384</td><td>0.487</td><td>0</td><td>0</td><td>0</td><td>1</td><td>1</td>
+            </tr>
+            <tr>
+              <td>Pclass <span class="badge badge-ice">ordinal</span></td>
+              <td>891</td><td>2.31</td><td>0.84</td><td>1</td><td>2</td><td>3</td><td>3</td><td>3</td>
+            </tr>
+            <tr>
+              <td>Age</td>
+              <td>714</td><td>29.70</td><td>14.53</td><td>0.42</td><td>20.1</td><td>28.0</td><td>38.0</td><td>80.0</td>
+            </tr>
+            <tr>
+              <td>SibSp</td>
+              <td>891</td><td>0.52</td><td>1.10</td><td>0</td><td>0</td><td>0</td><td>1</td><td>8</td>
+            </tr>
+            <tr>
+              <td>Parch</td>
+              <td>891</td><td>0.38</td><td>0.81</td><td>0</td><td>0</td><td>0</td><td>0</td><td>6</td>
+            </tr>
+            <tr>
+              <td>Fare <span class="badge badge-green">skewed</span></td>
+              <td>891</td><td>32.20</td><td>49.69</td><td>0</td><td>7.91</td><td>14.45</td><td>31.0</td><td>512.3</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 4. DISTRIBUTION ANALYSIS ── -->
+  <div>
+    <h2 class="section-title">Distribution Analysis</h2>
+    <p class="section-desc">How passengers were distributed across key demographic and class variables.</p>
+    <div class="grid-3">
+
+      <!-- Pclass Distribution -->
+      <div class="card">
+        <div class="card-title">Passenger Class Distribution</div>
+        <div class="bar-chart">
+          <div class="bar-row">
+            <span class="bar-label">1st Class</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:44%;background:var(--gold)">216</div></div>
+            <span class="bar-val">24.2%</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">2nd Class</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:37%;background:var(--ice)">184</div></div>
+            <span class="bar-val">20.7%</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">3rd Class</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:100%;background:var(--muted)">491</div></div>
+            <span class="bar-val">55.1%</span>
+          </div>
+        </div>
+        <div style="margin-top:14px;font-size:11px;color:var(--muted)">Over half the passengers traveled 3rd class, where survival rates were drastically lower.</div>
+      </div>
+
+      <!-- Sex Distribution -->
+      <div class="card">
+        <div class="card-title">Sex Distribution</div>
+        <div class="bar-chart">
+          <div class="bar-row">
+            <span class="bar-label">Male</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:100%;background:rgba(126,184,212,0.7)">577</div></div>
+            <span class="bar-val">64.8%</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">Female</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:54%;background:rgba(201,168,76,0.7)">314</div></div>
+            <span class="bar-val">35.2%</span>
+          </div>
+        </div>
+        <div style="margin-top:14px;font-size:11px;color:var(--muted)">Males outnumbered females nearly 2:1, yet females had a dramatically higher survival rate (74.2% vs 18.9%).</div>
+      </div>
+
+      <!-- Embarkation Port -->
+      <div class="card">
+        <div class="card-title">Port of Embarkation</div>
+        <div class="bar-chart">
+          <div class="bar-row">
+            <span class="bar-label">Southampton</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:100%;background:rgba(201,168,76,0.5)">644</div></div>
+            <span class="bar-val">72.3%</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">Cherbourg</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:26%;background:rgba(76,175,138,0.7)">168</div></div>
+            <span class="bar-val">18.9%</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">Queenstown</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:12%;background:rgba(126,184,212,0.5)">77</div></div>
+            <span class="bar-val">8.6%</span>
+          </div>
+        </div>
+        <div style="margin-top:14px;font-size:11px;color:var(--muted)">Cherbourg passengers had higher survival (55.4%), partly because many were wealthier 1st-class travelers.</div>
+      </div>
+    </div>
+
+    <!-- Age Distribution Histogram -->
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Age Distribution (714 passengers with known age)</div>
+      <div class="histogram" id="ageHist">
+        <!-- bins: 0-10, 10-20, 20-30, 30-40, 40-50, 50-60, 60-70, 70-80 -->
+        <!-- counts approx: 62, 102, 220, 167, 89, 48, 20, 6 -->
+        <div class="hist-bar" style="height:28%;--bar-color:var(--ice);opacity:0.75"><div class="tooltip">Ages 0–10<br>~62 passengers</div></div>
+        <div class="hist-bar" style="height:46%;--bar-color:var(--ice);opacity:0.8"><div class="tooltip">Ages 10–20<br>~102 passengers</div></div>
+        <div class="hist-bar" style="height:100%;--bar-color:var(--gold);opacity:0.9"><div class="tooltip">Ages 20–30<br>~220 passengers</div></div>
+        <div class="hist-bar" style="height:76%;--bar-color:var(--ice);opacity:0.85"><div class="tooltip">Ages 30–40<br>~167 passengers</div></div>
+        <div class="hist-bar" style="height:40%;--bar-color:var(--ice);opacity:0.8"><div class="tooltip">Ages 40–50<br>~89 passengers</div></div>
+        <div class="hist-bar" style="height:22%;--bar-color:var(--ice);opacity:0.7"><div class="tooltip">Ages 50–60<br>~48 passengers</div></div>
+        <div class="hist-bar" style="height:9%;--bar-color:var(--muted);opacity:0.7"><div class="tooltip">Ages 60–70<br>~20 passengers</div></div>
+        <div class="hist-bar" style="height:3%;--bar-color:var(--muted);opacity:0.6"><div class="tooltip">Ages 70–80<br>~6 passengers</div></div>
+        <div class="hist-axis">
+          <span>0</span><span>10</span><span>20</span><span>30</span><span>40</span><span>50</span><span>60</span><span>70</span><span>80</span>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">Mean age: 29.7 · Median: 28.0 · Right-skewed distribution · Youngest: 5 months · Oldest: 80 years</div>
+    </div>
+
+    <!-- Fare Distribution Note -->
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Fare Distribution (Highly Right-Skewed)</div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start">
+        <div class="histogram" id="fareHist" style="flex:1;min-width:200px">
+          <div class="hist-bar" style="height:100%;--bar-color:var(--ice)"><div class="tooltip">£0–20<br>~530 passengers</div></div>
+          <div class="hist-bar" style="height:38%;--bar-color:var(--ice)"><div class="tooltip">£20–50<br>~200 passengers</div></div>
+          <div class="hist-bar" style="height:15%;--bar-color:var(--gold)"><div class="tooltip">£50–100<br>~80 passengers</div></div>
+          <div class="hist-bar" style="height:8%;--bar-color:var(--gold)"><div class="tooltip">£100–200<br>~42 passengers</div></div>
+          <div class="hist-bar" style="height:4%;--bar-color:var(--red)"><div class="tooltip">£200–512<br>~20 passengers</div></div>
+          <div class="hist-axis"><span>£0</span><span>£100</span><span>£200</span><span>£300</span><span>£512</span></div>
+        </div>
+        <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:12px;color:var(--muted)">Fare is extremely right-skewed. The median is £14.45 while the max is £512.33 — a 35× difference. Survivors paid on average <span style="color:var(--green);font-weight:600">£48.40</span> compared to <span style="color:var(--red);font-weight:600">£22.12</span> for non-survivors.</div>
+          <div style="display:flex;gap:12px">
+            <div style="flex:1;background:rgba(76,175,138,0.1);border:1px solid rgba(76,175,138,0.3);border-radius:6px;padding:10px;text-align:center">
+              <div style="font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--green)">£48.40</div>
+              <div style="font-size:10px;color:var(--muted)">Avg Fare · Survived</div>
+            </div>
+            <div style="flex:1;background:rgba(224,82,82,0.1);border:1px solid rgba(224,82,82,0.3);border-radius:6px;padding:10px;text-align:center">
+              <div style="font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--red)">£22.12</div>
+              <div style="font-size:10px;color:var(--muted)">Avg Fare · Did Not Survive</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 5. SURVIVAL ANALYSIS ── -->
+  <div>
+    <h2 class="section-title">Survival Pattern Analysis</h2>
+    <p class="section-desc">Survival rates broken down by the most predictive variables.</p>
+
+    <div class="grid-2-1" style="align-items:start">
+
+      <!-- Survival by class + sex -->
+      <div class="card">
+        <div class="card-title">Survival Rate by Passenger Class & Sex</div>
+        <div class="compare-grid">
+
+          <div class="compare-row">
+            <span class="compare-label" style="color:var(--gold)">1st Class</span>
+            <div class="compare-bars">
+              <div style="display:flex;align-items:center;gap:6px">
+                <div class="c-bar" style="width:97%;background:rgba(201,168,76,0.7)">Female 97%</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div class="c-bar" style="width:37%;background:rgba(126,184,212,0.5)">Male 37%</div>
+              </div>
+            </div>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gold)">63.0% avg</span>
+          </div>
+
+          <div class="compare-row">
+            <span class="compare-label" style="color:var(--ice)">2nd Class</span>
+            <div class="compare-bars">
+              <div style="display:flex;align-items:center;gap:6px">
+                <div class="c-bar" style="width:92%;background:rgba(201,168,76,0.6)">Female 92%</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div class="c-bar" style="width:16%;background:rgba(126,184,212,0.4)">Male 16%</div>
+              </div>
+            </div>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ice)">47.3% avg</span>
+          </div>
+
+          <div class="compare-row">
+            <span class="compare-label" style="color:var(--muted)">3rd Class</span>
+            <div class="compare-bars">
+              <div style="display:flex;align-items:center;gap:6px">
+                <div class="c-bar" style="width:50%;background:rgba(201,168,76,0.4)">Female 50%</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div class="c-bar" style="width:14%;background:rgba(126,184,212,0.3)">Male 14%</div>
+              </div>
+            </div>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted)">24.2% avg</span>
+          </div>
+
+        </div>
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:16px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:12px;height:12px;border-radius:3px;background:rgba(201,168,76,0.7)"></div>
+            <span style="font-size:11px;color:var(--muted)">Female</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="width:12px;height:12px;border-radius:3px;background:rgba(126,184,212,0.5)"></div>
+            <span style="font-size:11px;color:var(--muted)">Male</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Overall survival donut -->
+      <div class="card">
+        <div class="card-title">Overall Survival</div>
+        <div class="donut-container">
+          <div class="donut-wrap">
+            <svg width="160" height="160" viewBox="0 0 160 160">
+              <circle cx="80" cy="80" r="60" fill="none" stroke="rgba(30,45,69,0.8)" stroke-width="22"/>
+              <!-- Survived arc: 38.4% of 376.99 = 144.76 -->
+              <circle cx="80" cy="80" r="60" fill="none" stroke="var(--green)" stroke-width="22"
+                stroke-dasharray="144.76 232.23" stroke-linecap="round"/>
+              <!-- Did not survive -->
+              <circle cx="80" cy="80" r="60" fill="none" stroke="var(--red)" stroke-width="22"
+                stroke-dasharray="232.23 144.76" stroke-dashoffset="-144.76" stroke-linecap="round" opacity="0.7"/>
+            </svg>
+            <div class="donut-center">
+              <div class="donut-pct">38.4%</div>
+              <div class="donut-sub">Survived</div>
+            </div>
+          </div>
+          <div class="legend-items">
+            <div class="legend-item">
+              <div class="legend-dot" style="background:var(--green)"></div>
+              <span class="legend-text">Survived</span>
+              <span class="legend-num">342</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:var(--red);opacity:0.7"></div>
+              <span class="legend-text">Did Not Survive</span>
+              <span class="legend-num">549</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Age bins + Family Size -->
+    <div class="grid-2" style="margin-top:16px">
+
+      <div class="card">
+        <div class="card-title">Survival Rate by Age Group</div>
+        <div class="bar-chart">
+          <div class="bar-row">
+            <span class="bar-label">Child (≤12)</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:57.9%;background:var(--green)">57.9%</div></div>
+            <span class="bar-val" style="color:var(--green)">57.9%</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">Teen 13–17</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:42.9%;background:rgba(76,175,138,0.6)">42.9%</div></div>
+            <span class="bar-val" style="color:var(--green)">42.9%</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">Young 18–35</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:38.3%;background:var(--ice)">38.3%</div></div>
+            <span class="bar-val">38.3%</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">Adult 36–60</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:40%;background:var(--ice)">40.0%</div></div>
+            <span class="bar-val">40.0%</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">Senior 60+</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:22.7%;background:var(--red)">22.7%</div></div>
+            <span class="bar-val" style="color:var(--red)">22.7%</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:12px">Children had the best survival rate (57.9%), supporting the "women and children first" evacuation protocol. Seniors fared worst at 22.7%.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Survival Rate by Family Size</div>
+        <div class="bar-chart">
+          <div class="bar-row sm">
+            <span class="bar-label">Solo (1)</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:30.4%;background:rgba(224,82,82,0.7)">30.4%</div></div>
+            <span class="bar-val" style="color:var(--red)">30.4%</span>
+          </div>
+          <div class="bar-row sm">
+            <span class="bar-label">2 members</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:55.3%;background:var(--ice)">55.3%</div></div>
+            <span class="bar-val">55.3%</span>
+          </div>
+          <div class="bar-row sm">
+            <span class="bar-label">3 members</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:57.8%;background:var(--ice)">57.8%</div></div>
+            <span class="bar-val">57.8%</span>
+          </div>
+          <div class="bar-row sm">
+            <span class="bar-label">4 members</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:72.4%;background:var(--green)">72.4%</div></div>
+            <span class="bar-val" style="color:var(--green)">72.4%</span>
+          </div>
+          <div class="bar-row sm">
+            <span class="bar-label">5+ members</span>
+            <div class="bar-bg"><div class="bar-fill" style="width:16%;background:rgba(224,82,82,0.7)">≤20%</div></div>
+            <span class="bar-val" style="color:var(--red)">≤20%</span>
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:12px">Sweet spot: families of 2–4 had 55–72% survival. Large families (5+) and solo travelers both suffered — likely difficulty coordinating evacuation.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 6. CORRELATION ANALYSIS ── -->
+  <div>
+    <h2 class="section-title">Correlation Analysis</h2>
+    <p class="section-desc">Pearson correlation coefficients between numerical features and Survived.</p>
+    <div class="grid-2" style="align-items:start">
+
+      <div class="card">
+        <div class="card-title">Correlation with Survival</div>
+        <table class="corr-table">
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th>Correlation</th>
+              <th class="corr-bar-cell">Direction & Strength</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Pclass</td>
+              <td><span class="corr-val" style="color:var(--red)">–0.338</span></td>
+              <td>
+                <div class="corr-inline-bar">
+                  <div class="corr-neg" style="width:68px"></div>
+                  <span style="font-size:10px;color:var(--muted)">Moderate negative</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>Fare</td>
+              <td><span class="corr-val" style="color:var(--green)">+0.257</span></td>
+              <td>
+                <div class="corr-inline-bar">
+                  <div class="corr-pos" style="width:51px"></div>
+                  <span style="font-size:10px;color:var(--muted)">Moderate positive</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>Parch</td>
+              <td><span class="corr-val" style="color:var(--green)">+0.082</span></td>
+              <td>
+                <div class="corr-inline-bar">
+                  <div class="corr-pos" style="width:16px"></div>
+                  <span style="font-size:10px;color:var(--muted)">Weak positive</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>SibSp</td>
+              <td><span class="corr-val" style="color:var(--red)">–0.035</span></td>
+              <td>
+                <div class="corr-inline-bar">
+                  <div class="corr-neg" style="width:7px"></div>
+                  <span style="font-size:10px;color:var(--muted)">Very weak</span>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td>Age</td>
+              <td><span class="corr-val" style="color:var(--red)">–0.077</span></td>
+              <td>
+                <div class="corr-inline-bar">
+                  <div class="corr-neg" style="width:15px"></div>
+                  <span style="font-size:10px;color:var(--muted)">Weak negative</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="margin-top:12px;font-size:11px;color:var(--muted)">Note: Sex is the strongest predictor but is categorical. Pclass and Fare are highly correlated with each other (–0.55), representing the same underlying wealth dimension.</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card">
+          <div class="card-title">Key Correlation Insights</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="padding:10px 12px;border-radius:6px;background:rgba(224,82,82,0.07);border:1px solid rgba(224,82,82,0.2)">
+              <div style="font-size:12px;font-weight:500;color:var(--white);margin-bottom:4px">Pclass ↔ Survived: –0.338</div>
+              <div style="font-size:11px;color:var(--muted)">Higher class number = lower survival. The strongest numerical predictor.</div>
+            </div>
+            <div style="padding:10px 12px;border-radius:6px;background:rgba(76,175,138,0.07);border:1px solid rgba(76,175,138,0.2)">
+              <div style="font-size:12px;font-weight:500;color:var(--white);margin-bottom:4px">Fare ↔ Survived: +0.257</div>
+              <div style="font-size:11px;color:var(--muted)">Higher fare = better survival odds. Closely tied to Pclass; may not add independent signal.</div>
+            </div>
+            <div style="padding:10px 12px;border-radius:6px;background:rgba(126,184,212,0.07);border:1px solid rgba(126,184,212,0.2)">
+              <div style="font-size:12px;font-weight:500;color:var(--white);margin-bottom:4px">Sex (categorical): Highest predictor</div>
+              <div style="font-size:11px;color:var(--muted)">Female survival (74.2%) vs Male (18.9%) — the single most powerful signal in the dataset.</div>
+            </div>
+          </div>
+        </div>
+        <div class="insight" style="--accent: var(--ice)">
+          <div class="insight-title"><div class="insight-icon" style="background:var(--ice);color:var(--navy)">↔</div>Multicollinearity Warning</div>
+          <div class="insight-text">Pclass and Fare share a strong negative correlation (≈ –0.55). Both capture wealth/class — models should be careful about using both, or consider one as a proxy.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 7. KEY INSIGHTS ── -->
+  <div>
+    <h2 class="section-title">Actionable Insights & Findings</h2>
+    <p class="section-desc">The most important patterns for understanding — and predicting — survival.</p>
+    <div class="grid-3">
+
+      <div class="insight" style="--accent: var(--gold)">
+        <div class="insight-title"><div class="insight-icon">1</div>"Women & Children First" is Confirmed</div>
+        <div class="insight-text">The data strongly validates this protocol. Female survival was 74.2% vs 18.9% for males. Children ≤12 had 57.9% survival — the highest of any age group. Sex is the single most predictive feature in this dataset.</div>
+      </div>
+
+      <div class="insight" style="--accent: var(--red)">
+        <div class="insight-title"><div class="insight-icon" style="background:var(--red)">2</div>Class Determines Fate</div>
+        <div class="insight-text">1st class survival: 63% · 2nd class: 47% · 3rd class: 24%. Lower-class passengers had fewer routes to lifeboat decks, less time to react, and faced structural disadvantages that turned class into a life-or-death variable.</div>
+      </div>
+
+      <div class="insight" style="--accent: var(--ice)">
+        <div class="insight-title"><div class="insight-icon" style="background:var(--ice);color:var(--navy)">3</div>Fare as a Wealth Proxy</div>
+        <div class="insight-text">Survivors paid on average £48.40 — more than double the £22.12 non-survivors paid. Since Fare strongly correlates with Pclass, this reflects the class survival disparity rather than being an independent predictor.</div>
+      </div>
+
+      <div class="insight" style="--accent: var(--green)">
+        <div class="insight-title"><div class="insight-icon" style="background:var(--green)">4</div>Optimal Family Size: 2–4</div>
+        <div class="insight-text">Passengers in small families (2–4 members) had 55–72% survival rates. Solo travelers (30%) and large families (≤20%) both did poorly. The sweet spot suggests family support aided evacuation without creating coordination bottlenecks.</div>
+      </div>
+
+      <div class="insight" style="--accent: var(--gold)">
+        <div class="insight-title"><div class="insight-icon">5</div>Embarkation Port Reflects Class</div>
+        <div class="insight-text">Cherbourg had 55.4% survival vs 33.7% for Southampton — not because of the port itself, but because Cherbourg attracted more wealthy 1st-class passengers. Port acts as a class proxy, not an independent survival factor.</div>
+      </div>
+
+      <div class="insight" style="--accent: var(--red)">
+        <div class="insight-title"><div class="insight-icon" style="background:var(--red)">6</div>Cabin Data is Compromised</div>
+        <div class="insight-text">With 77.1% of Cabin values missing, this field cannot be used reliably. However, having a recorded Cabin likely correlates with 1st-class status and survival — missingness itself is a meaningful signal worth encoding as a binary feature.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div style="border-top:1px solid var(--border);padding-top:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:gap;gap:12px">
+    <div>
+      <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--white)">Titanic EDA Report</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px">891 passengers · 12 features · Generated March 2026</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <span class="badge badge-gold">Pandas 2.x</span>
+      <span class="badge badge-ice">NumPy</span>
+      <span class="badge badge-green">891 rows analyzed</span>
+    </div>
+  </div>
+
+</div><!-- /main -->
+</body>
+</html>
