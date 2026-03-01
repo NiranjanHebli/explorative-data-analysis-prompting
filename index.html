@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Prompt-Driven Data Analysis</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --bg: #0a0a0f;
+        --surface: #12121a;
+        --border: #1e1e2e;
+        --accent: #e8ff47;
+        --accent2: #ff6b6b;
+        --text: #f0f0f0;
+        --muted: #6b6b80;
+        --card1: #1a1a2e;
+        --card2: #16213e;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Space Mono", monospace;
+        overflow-x: hidden;
+        cursor: default;
+      }
+
+      /* ── NOISE OVERLAY ── */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+        pointer-events: none;
+        z-index: 0;
+        opacity: 0.4;
+      }
+
+      /* ── NAV ── */
+      nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1.2rem 3rem;
+        background: rgba(10, 10, 15, 0.85);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .nav-logo {
+        font-family: "Syne", sans-serif;
+        font-weight: 800;
+        font-size: 1.1rem;
+        letter-spacing: -0.02em;
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .nav-links {
+        display: flex;
+        gap: 2rem;
+        list-style: none;
+      }
+      .nav-links a {
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        transition: color 0.2s;
+      }
+      .nav-links a:hover {
+        color: var(--accent);
+      }
+
+      /* ── HERO ── */
+      .hero {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 8rem 3rem 4rem;
+        position: relative;
+        z-index: 1;
+      }
+
+      .hero-inner {
+        max-width: 900px;
+        width: 100%;
+      }
+
+      .hero-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(232, 255, 71, 0.08);
+        border: 1px solid rgba(232, 255, 71, 0.25);
+        color: var(--accent);
+        font-size: 0.72rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        padding: 0.35rem 0.9rem;
+        border-radius: 2px;
+        margin-bottom: 2rem;
+        animation: fadeUp 0.6s ease both;
+      }
+
+      .hero-tag::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        background: var(--accent);
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.4;
+          transform: scale(0.7);
+        }
+      }
+
+      h1 {
+        font-family: "Syne", sans-serif;
+        font-size: clamp(3rem, 8vw, 6.5rem);
+        font-weight: 800;
+        line-height: 0.95;
+        letter-spacing: -0.03em;
+        animation: fadeUp 0.7s 0.1s ease both;
+      }
+
+      h1 .line2 {
+        color: var(--accent);
+        display: block;
+      }
+
+      .hero-sub {
+        margin-top: 2rem;
+        font-size: 0.9rem;
+        line-height: 1.8;
+        color: var(--muted);
+        max-width: 560px;
+        animation: fadeUp 0.7s 0.2s ease both;
+      }
+
+      .hero-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 2.5rem;
+        animation: fadeUp 0.7s 0.3s ease both;
+      }
+
+      .meta-pill {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        color: var(--muted);
+        font-size: 0.72rem;
+        padding: 0.4rem 1rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .meta-pill span {
+        color: var(--text);
+      }
+
+      /* ── GLOWING BG BLOB ── */
+      .blob {
+        position: absolute;
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(
+          circle,
+          rgba(232, 255, 71, 0.06) 0%,
+          transparent 70%
+        );
+        top: 50%;
+        right: 0;
+        transform: translateY(-50%);
+        pointer-events: none;
+      }
+
+      /* ── PARTS GRID ── */
+      .parts-section {
+        padding: 6rem 3rem;
+        max-width: 1100px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 1;
+      }
+
+      .section-header {
+        display: flex;
+        align-items: baseline;
+        gap: 1.5rem;
+        margin-bottom: 3rem;
+      }
+
+      .section-label {
+        font-family: "Syne", sans-serif;
+        font-size: 2rem;
+        font-weight: 700;
+      }
+
+      .section-line {
+        flex: 1;
+        height: 1px;
+        background: linear-gradient(to right, var(--border), transparent);
+      }
+
+      .parts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5px;
+        background: var(--border);
+        border: 1px solid var(--border);
+      }
+
+      .part-card {
+        background: var(--bg);
+        padding: 2.5rem;
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        position: relative;
+        overflow: hidden;
+        transition: background 0.25s;
+      }
+
+      .part-card::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          135deg,
+          rgba(232, 255, 71, 0.04) 0%,
+          transparent 60%
+        );
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+
+      .part-card:hover {
+        background: var(--surface);
+      }
+      .part-card:hover::after {
+        opacity: 1;
+      }
+
+      .part-card:hover .part-arrow {
+        transform: translate(4px, -4px);
+        color: var(--accent);
+      }
+
+      .part-num {
+        font-size: 0.7rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      .part-title {
+        font-family: "Syne", sans-serif;
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--text);
+        line-height: 1.2;
+      }
+
+      .part-desc {
+        font-size: 0.78rem;
+        line-height: 1.7;
+        color: var(--muted);
+        flex: 1;
+      }
+
+      .part-arrow {
+        align-self: flex-end;
+        font-size: 1.2rem;
+        color: var(--border);
+        transition:
+          transform 0.25s,
+          color 0.25s;
+      }
+
+      .part-tag {
+        display: inline-block;
+        font-size: 0.65rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 0.25rem 0.6rem;
+        border: 1px solid;
+      }
+
+      .tag-zero {
+        border-color: rgba(100, 200, 255, 0.3);
+        color: #64c8ff;
+      }
+      .tag-one {
+        border-color: rgba(180, 130, 255, 0.3);
+        color: #b482ff;
+      }
+      .tag-multi {
+        border-color: rgba(255, 160, 80, 0.3);
+        color: #ffa050;
+      }
+      .tag-struct {
+        border-color: rgba(80, 220, 160, 0.3);
+        color: #50dcaa;
+      }
+      .tag-vibe {
+        border-color: rgba(255, 107, 107, 0.3);
+        color: #ff6b6b;
+      }
+
+      /* ── DATASET SECTION ── */
+      .dataset-section {
+        padding: 4rem 3rem 6rem;
+        max-width: 1100px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 1;
+      }
+
+      .dataset-card {
+        border: 1px solid var(--border);
+        padding: 3rem;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3rem;
+        background: var(--surface);
+      }
+
+      .dataset-label {
+        font-size: 0.7rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 1rem;
+      }
+
+      .dataset-name {
+        font-family: "Syne", sans-serif;
+        font-size: 2.5rem;
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .dataset-desc {
+        font-size: 0.82rem;
+        line-height: 1.8;
+        color: var(--muted);
+        margin-top: 1.2rem;
+      }
+
+      .dataset-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        align-content: start;
+      }
+
+      .stat {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        padding: 1.2rem;
+      }
+
+      .stat-val {
+        font-family: "Syne", sans-serif;
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: var(--accent);
+      }
+
+      .stat-label {
+        font-size: 0.68rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-top: 0.3rem;
+      }
+
+      /* ── FOOTER ── */
+      footer {
+        border-top: 1px solid var(--border);
+        padding: 2rem 3rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+        z-index: 1;
+      }
+
+      footer p {
+        font-size: 0.72rem;
+        color: var(--muted);
+      }
+
+      /* ── ANIMATIONS ── */
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(24px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .parts-grid .part-card {
+        animation: fadeUp 0.5s ease both;
+      }
+      .part-card:nth-child(1) {
+        animation-delay: 0.1s;
+      }
+      .part-card:nth-child(2) {
+        animation-delay: 0.18s;
+      }
+      .part-card:nth-child(3) {
+        animation-delay: 0.26s;
+      }
+      .part-card:nth-child(4) {
+        animation-delay: 0.34s;
+      }
+      .part-card:nth-child(5) {
+        animation-delay: 0.42s;
+      }
+
+      /* ── RESPONSIVE ── */
+      @media (max-width: 680px) {
+        nav {
+          padding: 1rem 1.5rem;
+        }
+        .nav-links {
+          display: none;
+        }
+        .hero {
+          padding: 7rem 1.5rem 3rem;
+        }
+        .parts-section,
+        .dataset-section {
+          padding-left: 1.5rem;
+          padding-right: 1.5rem;
+        }
+        .dataset-card {
+          grid-template-columns: 1fr;
+          gap: 2rem;
+        }
+        footer {
+          flex-direction: column;
+          gap: 0.5rem;
+          text-align: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- NAV -->
+    <nav>
+      <a href="index.html" class="nav-logo">LLM // Analysis</a>
+      <ul class="nav-links">
+        <li><a href="#parts">Parts</a></li>
+        <li><a href="#dataset">Dataset</a></li>
+        <li><a href="titanic_eda.html">Start →</a></li>
+      </ul>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero">
+      <div class="blob"></div>
+      <div class="hero-inner">
+        <div class="hero-tag">Data Analysing using AI Prompting</div>
+        <h1>
+          Prompt-Driven
+          <span class="line2">Data Analysis</span>
+        </h1>
+        <p class="hero-sub">
+          Using Large Language Models as the primary analytical assistant. Five
+          prompting techniques applied to a real-world dataset — letting the
+          strategy guide the workflow.
+        </p>
+        <div class="hero-meta">
+          <div class="meta-pill">Subject: <span>LLM / AI Prompting</span></div>
+          <div class="meta-pill">Parts: <span>5</span></div>
+          <div class="meta-pill">
+            Dataset: <span>Iris / Titanic / Superstore</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PARTS -->
+    <section class="parts-section" id="parts">
+      <div class="section-header">
+        <span class="section-label">The Five Parts</span>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="parts-grid">
+        <a href="titanic_eda.html" class="part-card">
+          <span class="part-num">Part 01</span>
+          <div class="part-tag tag-zero">Zero-Shot</div>
+          <div class="part-title">Zero-Shot Prompting</div>
+          <p class="part-desc">
+            Ask the LLM to analyze the dataset without any prior examples or
+            context. Explore what insights emerge purely from a direct,
+            unprepared prompt.
+          </p>
+          <span class="part-arrow">↗</span>
+        </a>
+
+        <a href="titanic_eda_report.html" class="part-card">
+          <span class="part-num">Part 02</span>
+          <div class="part-tag tag-one">One-Shot</div>
+          <div class="part-title">One-Shot Prompting</div>
+          <p class="part-desc">
+            Provide a single example to guide the model's analytical behavior.
+            Observe how one demonstration shapes the quality and style of
+            output.
+          </p>
+          <span class="part-arrow">↗</span>
+        </a>
+
+        <a href="part3.html" class="part-card">
+          <span class="part-num">Part 03</span>
+          <div class="part-tag tag-multi">Multi-Shot</div>
+          <div class="part-title">Multi-Shot Prompting</div>
+          <p class="part-desc">
+            Supply multiple examples to build a richer context. Compare how
+            increasing the number of demonstrations improves analysis.
+          </p>
+          <span class="part-arrow">↗</span>
+        </a>
+
+        <a href="part4.html" class="part-card">
+          <span class="part-num">Part 04</span>
+          <div class="part-tag tag-struct">Structured</div>
+          <div class="part-title">Structured Prompting</div>
+          <p class="part-desc">
+            Design systematic, schema-driven prompts with explicit roles,
+            formats, and constraints to extract reproducible and structured
+            analytical outputs.
+          </p>
+          <span class="part-arrow">↗</span>
+        </a>
+
+        <a href="part5.html" class="part-card">
+          <span class="part-num">Part 05</span>
+          <div class="part-tag tag-vibe">Vibe Coding</div>
+          <div class="part-title">Vibe Coding for Data Analysis</div>
+          <p class="part-desc">
+            Embrace an iterative, intuition-led prompting style. Let the "vibe"
+            of the conversation steer the analysis in unexpected and creative
+            directions.
+          </p>
+          <span class="part-arrow">↗</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- DATASET -->
+    <section class="dataset-section" id="dataset">
+      <div class="section-header">
+        <span class="section-label">Dataset</span>
+        <div class="section-line"></div>
+      </div>
+
+      <div class="dataset-card">
+        <div>
+          <div class="dataset-label">Primary Dataset</div>
+          <div class="dataset-name">Titanic Dataset</div>
+          <p class="dataset-desc">
+            The Titanic dataset contains passenger information from the RMS
+            Titanic's maiden voyage. It includes features such as passenger
+            class, age, fare, and survival status for 891 samples — a classic
+            dataset for classification and predictive analysis tasks.
+          </p>
+          <p class="dataset-desc" style="margin-top: 0.8rem">
+            All five prompting techniques are applied to this same dataset,
+            allowing direct comparison of how each strategy shapes the LLM's
+            analytical output.
+          </p>
+        </div>
+        <div class="dataset-stats">
+            <div class="stat">
+            <div class="stat-val">891</div>
+            <div class="stat-label">Samples</div>
+            </div>
+            <div class="stat">
+            <div class="stat-val">12</div>
+            <div class="stat-label">Features</div>
+            </div>
+            <div class="stat">
+            <div class="stat-val">2</div>
+            <div class="stat-label">Classes</div>
+            </div>
+            <div class="stat">
+            <div class="stat-val">1912</div>
+            <div class="stat-label">Year (Voyage)</div>
+            </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+      <p>Prompt-Driven Data Analysis Using LLMs</p>
+      <p>
+        Navigate → Part
+        <a href="titanic_eda.html" style="color: var(--accent); text-decoration: none"
+          >1</a
+        >
+        &nbsp;
+        <a href="titanic_eda_report.html" style="color: var(--muted); text-decoration: none"
+          >2</a
+        >
+        &nbsp;
+        <a href="part3.html" style="color: var(--muted); text-decoration: none"
+          >3</a
+        >
+        &nbsp;
+        <a href="part4.html" style="color: var(--muted); text-decoration: none"
+          >4</a
+        >
+        &nbsp;
+        <a href="part5.html" style="color: var(--muted); text-decoration: none"
+          >5</a
+        >
+      </p>
+    </footer>
+  </body>
+</html>
