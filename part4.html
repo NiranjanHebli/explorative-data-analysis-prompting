@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Titanic EDA Report</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#f0f4f8;color:#1a202c}
+  header{background:linear-gradient(135deg,#1a365d,#2b6cb0);color:#fff;padding:36px 40px}
+  header h1{font-size:2rem;font-weight:700}
+  header p{margin-top:8px;opacity:.85;font-size:.95rem}
+  .container{max-width:1100px;margin:0 auto;padding:32px 20px}
+  .section{background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);padding:28px;margin-bottom:28px}
+  .section h2{font-size:1.25rem;font-weight:700;color:#2b6cb0;border-bottom:2px solid #bee3f8;padding-bottom:10px;margin-bottom:20px}
+  .section h3{font-size:1rem;font-weight:600;color:#2d3748;margin:18px 0 10px}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .metric-card{background:#ebf8ff;border:1px solid #bee3f8;border-radius:8px;padding:16px;text-align:center}
+  .metric-card .val{font-size:1.8rem;font-weight:700;color:#2b6cb0}
+  .metric-card .lbl{font-size:.8rem;color:#4a5568;margin-top:4px}
+  table{width:100%;border-collapse:collapse;font-size:.88rem}
+  th{background:#2b6cb0;color:#fff;padding:9px 12px;text-align:left}
+  td{padding:8px 12px;border-bottom:1px solid #e2e8f0}
+  tr:nth-child(even) td{background:#f7fafc}
+  .badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:.78rem;font-weight:600}
+  .badge-red{background:#fed7d7;color:#c53030}
+  .badge-yellow{background:#fefcbf;color:#744210}
+  .badge-green{background:#c6f6d5;color:#276749}
+  .chart-wrap{position:relative;height:280px}
+  .insight-box{background:#f0fff4;border-left:4px solid #38a169;padding:14px 16px;border-radius:0 8px 8px 0;margin-top:14px;font-size:.9rem;line-height:1.6}
+  .warning-box{background:#fffbeb;border-left:4px solid #d69e2e;padding:14px 16px;border-radius:0 8px 8px 0;margin-top:14px;font-size:.9rem;line-height:1.6}
+  ul{padding-left:18px;line-height:1.9}
+  p{line-height:1.7;font-size:.93rem;margin-bottom:8px}
+  @media(max-width:680px){.grid-2,.grid-3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🚢 Titanic Dataset — Exploratory Data Analysis</h1>
+  <p>Comprehensive analysis of passenger demographics, ticket data, and survival outcomes</p>
+</header>
+<div class="container">
+
+<!-- 1. Dataset Overview -->
+<div class="section">
+  <h2>1. Dataset Overview</h2>
+  <div class="grid-3" style="margin-bottom:20px">
+    <div class="metric-card"><div class="val">891</div><div class="lbl">Total Passengers</div></div>
+    <div class="metric-card"><div class="val">12</div><div class="lbl">Features</div></div>
+    <div class="metric-card"><div class="val">342</div><div class="lbl">Survivors (38.4%)</div></div>
+  </div>
+  <table>
+    <thead><tr><th>Column</th><th>Dtype</th><th>Non-Null Count</th><th>Missing</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td>PassengerId</td><td>int64</td><td>891</td><td>0</td><td>ID</td></tr>
+      <tr><td>Survived</td><td>int64</td><td>891</td><td>0</td><td>🎯 Target</td></tr>
+      <tr><td>Pclass</td><td>int64</td><td>891</td><td>0</td><td>Feature</td></tr>
+      <tr><td>Name</td><td>object</td><td>891</td><td>0</td><td>Text</td></tr>
+      <tr><td>Sex</td><td>object</td><td>891</td><td>0</td><td>Feature</td></tr>
+      <tr><td>Age</td><td>float64</td><td>714</td><td><span class="badge badge-red">177 (19.9%)</span></td><td>Feature</td></tr>
+      <tr><td>SibSp</td><td>int64</td><td>891</td><td>0</td><td>Feature</td></tr>
+      <tr><td>Parch</td><td>int64</td><td>891</td><td>0</td><td>Feature</td></tr>
+      <tr><td>Ticket</td><td>object</td><td>891</td><td>0</td><td>Text/ID</td></tr>
+      <tr><td>Fare</td><td>float64</td><td>891</td><td>0</td><td>Feature</td></tr>
+      <tr><td>Cabin</td><td>object</td><td>204</td><td><span class="badge badge-red">687 (77.1%)</span></td><td>Feature</td></tr>
+      <tr><td>Embarked</td><td>object</td><td>889</td><td><span class="badge badge-yellow">2 (0.2%)</span></td><td>Feature</td></tr>
+    </tbody>
+  </table>
+  <div class="insight-box">
+    <strong>Key Observations:</strong><br>
+    The dataset has 891 rows and 12 columns. No duplicate rows were found. Three columns have missing data — <em>Age</em> (19.9%), <em>Cabin</em> (77.1%), and <em>Embarked</em> (0.2%). Cabin's missingness is too high for direct imputation and warrants a binary "has_cabin" indicator feature instead.
+  </div>
+</div>
+
+<!-- 2. Univariate Analysis -->
+<div class="section">
+  <h2>2. Univariate Analysis</h2>
+
+  <h3>2a. Numerical Features — Summary Statistics</h3>
+  <table>
+    <thead><tr><th>Feature</th><th>Mean</th><th>Median</th><th>Std</th><th>Min</th><th>Max</th><th>Skew</th></tr></thead>
+    <tbody>
+      <tr><td>Age</td><td>29.70</td><td>28.00</td><td>14.53</td><td>0.42</td><td>80</td><td>0.39</td></tr>
+      <tr><td>Fare</td><td>32.20</td><td>14.45</td><td>49.69</td><td>0</td><td>512.33</td><td><span class="badge badge-red">4.79 (high)</span></td></tr>
+      <tr><td>SibSp</td><td>0.52</td><td>0</td><td>1.10</td><td>0</td><td>8</td><td>3.70</td></tr>
+      <tr><td>Parch</td><td>0.38</td><td>0</td><td>0.81</td><td>0</td><td>6</td><td>2.77</td></tr>
+    </tbody>
+  </table>
+
+  <div class="grid-2" style="margin-top:22px">
+    <div>
+      <h3>Age Distribution</h3>
+      <div class="chart-wrap"><canvas id="ageChart"></canvas></div>
+    </div>
+    <div>
+      <h3>Fare Distribution (log scale)</h3>
+      <div class="chart-wrap"><canvas id="fareChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:22px">
+    <div>
+      <h3>Passenger Class (Pclass)</h3>
+      <div class="chart-wrap"><canvas id="pclassChart"></canvas></div>
+    </div>
+    <div>
+      <h3>Sex Distribution</h3>
+      <div class="chart-wrap"><canvas id="sexChart"></canvas></div>
+    </div>
+  </div>
+
+  <div style="margin-top:22px">
+    <h3>Embarkation Port</h3>
+    <div class="chart-wrap" style="height:220px"><canvas id="embarkChart"></canvas></div>
+  </div>
+
+  <div class="insight-box" style="margin-top:16px">
+    <strong>Univariate Insights:</strong><br>
+    • Age is roughly bell-shaped (mean 29.7, slight right skew) with a notable cluster of infants/children under 5.<br>
+    • Fare is extremely right-skewed (skewness 4.8); log-transformation is strongly recommended before modeling.<br>
+    • Most passengers traveled alone (SibSp=0: ~68%, Parch=0: ~76%).<br>
+    • Class 3 dominates at 55% of passengers, while Class 1 and 2 each account for ~24% and ~21%.<br>
+    • Males outnumber females (65% vs 35%). Southampton was the primary embarkation port (72%).
+  </div>
+</div>
+
+<!-- 3. Bivariate Analysis -->
+<div class="section">
+  <h2>3. Bivariate Analysis — Survival Relationships</h2>
+
+  <div class="grid-2">
+    <div>
+      <h3>Survival Rate by Sex</h3>
+      <div class="chart-wrap"><canvas id="survSexChart"></canvas></div>
+    </div>
+    <div>
+      <h3>Survival Rate by Pclass</h3>
+      <div class="chart-wrap"><canvas id="survPclassChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-2" style="margin-top:22px">
+    <div>
+      <h3>Survival Rate by Embarked</h3>
+      <div class="chart-wrap"><canvas id="survEmbarkChart"></canvas></div>
+    </div>
+    <div>
+      <h3>Age vs Survival (Avg Age)</h3>
+      <div class="chart-wrap"><canvas id="agesurvChart"></canvas></div>
+    </div>
+  </div>
+
+  <h3 style="margin-top:22px">Survival Rate by Sex × Pclass (Cross-tabulation)</h3>
+  <table>
+    <thead><tr><th>Pclass</th><th>Female Survival %</th><th>Male Survival %</th><th>Overall %</th></tr></thead>
+    <tbody>
+      <tr><td>1st Class</td><td>97%</td><td>37%</td><td>63%</td></tr>
+      <tr><td>2nd Class</td><td>92%</td><td>16%</td><td>47%</td></tr>
+      <tr><td>3rd Class</td><td>50%</td><td>14%</td><td>24%</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="margin-top:20px">Fare by Survival Group</h3>
+  <table>
+    <thead><tr><th>Survived</th><th>Mean Fare</th><th>Median Fare</th></tr></thead>
+    <tbody>
+      <tr><td>No (0)</td><td>$22.12</td><td>$10.50</td></tr>
+      <tr><td>Yes (1)</td><td>$48.40</td><td>$26.00</td></tr>
+    </tbody>
+  </table>
+
+  <div class="insight-box" style="margin-top:16px">
+    <strong>Bivariate Insights:</strong><br>
+    • <strong>Sex</strong> is the strongest predictor: females survived at ~74% vs males at ~19%.<br>
+    • <strong>Pclass</strong> is the second strongest: 1st class passengers had a 63% survival rate vs 24% in 3rd class.<br>
+    • The interaction of Sex × Pclass is powerful — 1st class females survived at 97% while 3rd class males survived at only 14%.<br>
+    • <strong>Fare</strong> strongly correlates with survival (survivors paid ~2× the median fare), likely due to its proxy relationship with Pclass.<br>
+    • <strong>Embarked at Cherbourg (C)</strong> shows higher survival (~55%) vs Southampton (~34%) — likely confounded by more 1st class passengers from Cherbourg.<br>
+    • Survivors tend to be slightly younger (mean age ~28.3) vs non-survivors (~30.6), but the effect is moderate.
+  </div>
+</div>
+
+<!-- 4. Outliers & Anomalies -->
+<div class="section">
+  <h2>4. Outliers & Anomalies</h2>
+  <div class="grid-2">
+    <div>
+      <h3>Fare Outliers (IQR Method)</h3>
+      <table>
+        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Q1</td><td>$7.91</td></tr>
+          <tr><td>Q3</td><td>$31.00</td></tr>
+          <tr><td>IQR</td><td>$23.09</td></tr>
+          <tr><td>Upper Fence</td><td>$65.64</td></tr>
+          <tr><td>Outliers (>fence)</td><td>116 passengers (13%)</td></tr>
+          <tr><td>Max Fare</td><td>$512.33</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3>Age Outliers</h3>
+      <table>
+        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Q1</td><td>20.12</td></tr>
+          <tr><td>Q3</td><td>38.00</td></tr>
+          <tr><td>IQR</td><td>17.88</td></tr>
+          <tr><td>Upper Fence</td><td>64.82</td></tr>
+          <tr><td>Outliers (>fence)</td><td>~11 passengers</td></tr>
+          <tr><td>Max Age</td><td>80</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="warning-box" style="margin-top:16px">
+    <strong>Notable Anomalies:</strong><br>
+    • 15 passengers have a Fare of $0.00 — likely crew/officials or data entry errors. Needs investigation.<br>
+    • Maximum fare of $512.33 (3 passengers — the Cardeza family in Suite B) is legitimate but extremely influential.<br>
+    • Passenger with Age=0.42 is a genuine infant (5-month-old).<br>
+    • 681 unique ticket numbers exist among 891 passengers — some shared tickets indicate group travel.<br>
+    • 3 passengers have SibSp=8 — part of the large Sage family, all of whom perished.
+  </div>
+</div>
+
+<!-- 5. Correlation -->
+<div class="section">
+  <h2>5. Feature Correlation with Survival</h2>
+  <div class="chart-wrap" style="height:300px"><canvas id="corrChart"></canvas></div>
+  <div class="insight-box" style="margin-top:16px">
+    Fare shows the highest positive correlation with survival (+0.26), while Pclass shows the highest negative correlation (−0.34, noting that higher class number = lower class). Sex_encoded (female=1) shows very strong positive correlation (+0.54). Age shows a weak negative correlation (−0.07).
+  </div>
+</div>
+
+<!-- 6. Recommendations -->
+<div class="section">
+  <h2>6. Preprocessing Recommendations</h2>
+  <div class="grid-2">
+    <div>
+      <h3>🔧 Missing Data Strategy</h3>
+      <ul>
+        <li><strong>Age (19.9%):</strong> Impute using median age per Sex+Pclass group (more accurate than global median)</li>
+        <li><strong>Cabin (77.1%):</strong> Don't impute — create binary <code>Has_Cabin</code> feature (cabin known = likely wealthier)</li>
+        <li><strong>Embarked (0.2%):</strong> Impute with mode 'S' (Southampton)</li>
+      </ul>
+    </div>
+    <div>
+      <h3>⚙️ Feature Engineering</h3>
+      <ul>
+        <li>Extract <code>Title</code> from Name (Mr, Mrs, Miss, Master, Rare) — proxy for age/social status</li>
+        <li>Create <code>FamilySize = SibSp + Parch + 1</code></li>
+        <li>Create <code>IsAlone</code> binary flag (FamilySize == 1)</li>
+        <li>Apply <code>log(Fare + 1)</code> to normalize skewed distribution</li>
+        <li>Bin Age into groups: Child, Teen, Adult, Senior</li>
+        <li>Extract <code>Deck</code> letter from Cabin where available</li>
+      </ul>
+    </div>
+  </div>
+  <div class="grid-2" style="margin-top:16px">
+    <div>
+      <h3>📊 Encoding</h3>
+      <ul>
+        <li>Sex: Binary encode (female=1, male=0)</li>
+        <li>Embarked: One-hot encode (3 categories)</li>
+        <li>Pclass: Treat as ordinal or one-hot</li>
+        <li>Title: Ordinal or one-hot after grouping rare titles</li>
+      </ul>
+    </div>
+    <div>
+      <h3>🚫 Drop / Cautious Features</h3>
+      <ul>
+        <li><strong>PassengerId:</strong> Drop — purely sequential ID</li>
+        <li><strong>Name:</strong> Drop after extracting Title</li>
+        <li><strong>Ticket:</strong> Drop (high cardinality; limited signal without complex NLP)</li>
+        <li><strong>Fare:</strong> Watch for multicollinearity with Pclass</li>
+      </ul>
+    </div>
+  </div>
+  <div class="insight-box" style="margin-top:16px">
+    <strong>Top Modeling Signals (ranked):</strong> Sex &gt; Pclass &gt; Fare &gt; Title &gt; FamilySize &gt; Age &gt; Embarked. A gradient boosted tree (XGBoost/LightGBM) or Random Forest will likely perform well given the mix of categorical and numerical features with moderate non-linear interactions.
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+const C = Chart;
+// Age distribution (approximate bins)
+new C(document.getElementById('ageChart'), {
+  type:'bar',
+  data:{labels:['0-10','11-20','21-30','31-40','41-50','51-60','61-70','71-80'],
+    datasets:[{label:'Count',data:[62,102,220,167,89,48,19,7],
+    backgroundColor:'#63b3ed'}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+});
+
+// Fare distribution bins
+new C(document.getElementById('fareChart'), {
+  type:'bar',
+  data:{labels:['$0-10','$10-20','$20-30','$30-50','$50-100','$100-200','$200+'],
+    datasets:[{label:'Count',data:[337,163,110,96,89,57,39],backgroundColor:'#f6ad55'}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+});
+
+// Pclass
+new C(document.getElementById('pclassChart'), {
+  type:'doughnut',
+  data:{labels:['1st Class','2nd Class','3rd Class'],
+    datasets:[{data:[216,184,491],backgroundColor:['#2b6cb0','#63b3ed','#bee3f8']}]},
+  options:{responsive:true,maintainAspectRatio:false}
+});
+
+// Sex
+new C(document.getElementById('sexChart'), {
+  type:'doughnut',
+  data:{labels:['Male','Female'],
+    datasets:[{data:[577,314],backgroundColor:['#4299e1','#ed64a6']}]},
+  options:{responsive:true,maintainAspectRatio:false}
+});
+
+// Embark
+new C(document.getElementById('embarkChart'), {
+  type:'bar',
+  data:{labels:['Southampton (S)','Cherbourg (C)','Queenstown (Q)'],
+    datasets:[{label:'Count',data:[644,168,77],backgroundColor:['#68d391','#f6ad55','#fc8181']}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},indexAxis:'y',scales:{x:{beginAtZero:true}}}
+});
+
+// Survival by Sex
+new C(document.getElementById('survSexChart'), {
+  type:'bar',
+  data:{labels:['Male','Female'],
+    datasets:[{label:'Survived %',data:[19,74],backgroundColor:['#4299e1','#ed64a6']},
+              {label:'Not Survived %',data:[81,26],backgroundColor:['#bee3f8','#fbb6ce']}]},
+  options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true},y:{stacked:true,max:100}}}
+});
+
+// Survival by Pclass
+new C(document.getElementById('survPclassChart'), {
+  type:'bar',
+  data:{labels:['1st Class','2nd Class','3rd Class'],
+    datasets:[{label:'Survived %',data:[63,47,24],backgroundColor:['#2b6cb0','#63b3ed','#bee3f8']},
+              {label:'Not Survived %',data:[37,53,76],backgroundColor:['#e2e8f0','#e2e8f0','#e2e8f0']}]},
+  options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true},y:{stacked:true,max:100}}}
+});
+
+// Survival by Embarked
+new C(document.getElementById('survEmbarkChart'), {
+  type:'bar',
+  data:{labels:['Southampton','Cherbourg','Queenstown'],
+    datasets:[{label:'Survived %',data:[34,55,39],backgroundColor:['#68d391','#f6ad55','#fc8181']},
+              {label:'Not Survived %',data:[66,45,61],backgroundColor:['#e2e8f0','#e2e8f0','#e2e8f0']}]},
+  options:{responsive:true,maintainAspectRatio:false,scales:{x:{stacked:true},y:{stacked:true,max:100}}}
+});
+
+// Age by survival
+new C(document.getElementById('agesurvChart'), {
+  type:'bar',
+  data:{labels:['Not Survived','Survived'],
+    datasets:[{label:'Mean Age',data:[30.6,28.3],backgroundColor:['#fc8181','#68d391']}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:25,max:33}}}
+});
+
+// Correlation chart
+new C(document.getElementById('corrChart'), {
+  type:'bar',
+  data:{labels:['Sex (female=1)','Pclass (inverted)','Fare','Embarked_C','SibSp','Parch','Age','Embarked_Q'],
+    datasets:[{label:'Correlation with Survived',
+      data:[0.54,-0.34,0.26,0.17,-0.04,0.08,-0.07,-0.04],
+      backgroundColor:['#38a169','#e53e3e','#38a169','#38a169','#a0aec0','#38a169','#e53e3e','#a0aec0']}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+    scales:{y:{min:-0.6,max:0.6,grid:{color:'#e2e8f0'}},x:{ticks:{font:{size:11}}}}}
+});
+</script>
+</body>
+</html>
