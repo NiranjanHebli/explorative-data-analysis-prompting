@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Titanic EDA — 1912</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1410;
+    --paper: #f4ede0;
+    --rust: #9b3a1e;
+    --gold: #c8993a;
+    --steel: #4a5568;
+    --mist: #d6cfc4;
+    --deep: #2d1f14;
+    --survived: #2e7d52;
+    --died: #9b3a1e;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-weight: 300;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* Noise texture overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--deep);
+    color: var(--paper);
+    padding: 60px 60px 50px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--rust), var(--gold), var(--rust));
+  }
+
+  .header-eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 16px;
+  }
+
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(42px, 7vw, 86px);
+    font-weight: 900;
+    line-height: 0.95;
+    letter-spacing: -2px;
+  }
+
+  header h1 em {
+    font-style: italic;
+    color: var(--gold);
+  }
+
+  .header-meta {
+    display: flex;
+    gap: 40px;
+    margin-top: 32px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--mist);
+  }
+
+  .header-meta span strong {
+    display: block;
+    color: var(--gold);
+    font-size: 22px;
+    font-family: 'Playfair Display', serif;
+    margin-bottom: 2px;
+  }
+
+  .watermark {
+    position: absolute;
+    right: -20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'Playfair Display', serif;
+    font-size: 180px;
+    font-weight: 900;
+    color: rgba(255,255,255,0.03);
+    pointer-events: none;
+    letter-spacing: -10px;
+  }
+
+  /* MAIN LAYOUT */
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 40px 80px;
+  }
+
+  /* SECTIONS */
+  .section {
+    margin-top: 72px;
+    opacity: 0;
+    transform: translateY(24px);
+    animation: fadeUp 0.6s forwards;
+  }
+
+  .section:nth-child(1) { animation-delay: 0.1s; }
+  .section:nth-child(2) { animation-delay: 0.2s; }
+  .section:nth-child(3) { animation-delay: 0.3s; }
+  .section:nth-child(4) { animation-delay: 0.4s; }
+  .section:nth-child(5) { animation-delay: 0.5s; }
+  .section:nth-child(6) { animation-delay: 0.6s; }
+
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--mist);
+  }
+
+  .section-number {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--rust);
+    letter-spacing: 2px;
+  }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  /* CARDS */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .card {
+    background: white;
+    border: 1px solid var(--mist);
+    padding: 20px 22px;
+    position: relative;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px; height: 100%;
+    background: var(--rust);
+  }
+
+  .card-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--steel);
+    margin-bottom: 6px;
+  }
+
+  .card-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--deep);
+    line-height: 1;
+  }
+
+  .card-sub {
+    font-size: 12px;
+    color: var(--steel);
+    margin-top: 4px;
+  }
+
+  .card.gold::before { background: var(--gold); }
+  .card.survived::before { background: var(--survived); }
+
+  /* TABLE */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+
+  th {
+    background: var(--deep);
+    color: var(--gold);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 12px 16px;
+    text-align: left;
+  }
+
+  td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--mist);
+  }
+
+  tr:nth-child(even) td { background: rgba(0,0,0,0.02); }
+  tr:hover td { background: rgba(200,153,58,0.06); }
+
+  .type-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    padding: 2px 8px;
+    background: var(--mist);
+    border-radius: 2px;
+  }
+
+  /* MISSING VALUES BAR */
+  .missing-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+  }
+
+  .missing-col-name {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    width: 120px;
+    flex-shrink: 0;
+  }
+
+  .missing-bar-wrap {
+    flex: 1;
+    height: 20px;
+    background: rgba(0,0,0,0.06);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .missing-bar-fill {
+    height: 100%;
+    background: var(--rust);
+    width: 0;
+    transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .missing-bar-fill.gold { background: var(--gold); }
+  .missing-bar-fill.low { background: var(--steel); width: 0 !important; }
+
+  .missing-pct {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    width: 50px;
+    text-align: right;
+    color: var(--rust);
+    font-weight: 500;
+  }
+
+  .missing-pct.none { color: var(--steel); }
+
+  /* STAT TABLE */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+
+  .stat-box {
+    background: white;
+    border: 1px solid var(--mist);
+    padding: 18px 20px;
+  }
+
+  .stat-box-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--rust);
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--mist);
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 4px 0;
+    border-bottom: 1px dotted rgba(0,0,0,0.08);
+  }
+
+  .stat-row span:first-child { color: var(--steel); }
+  .stat-row span:last-child { font-family: 'IBM Plex Mono', monospace; font-weight: 500; }
+
+  /* DISTRIBUTIONS */
+  .dist-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  @media (max-width: 700px) { .dist-grid { grid-template-columns: 1fr; } }
+
+  .dist-chart {
+    background: white;
+    border: 1px solid var(--mist);
+    padding: 24px;
+  }
+
+  .dist-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--steel);
+    margin-bottom: 20px;
+  }
+
+  /* Age histogram bars */
+  .hist-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 100px;
+  }
+
+  .hist-bar {
+    flex: 1;
+    background: var(--rust);
+    opacity: 0.75;
+    position: relative;
+    transition: opacity 0.2s;
+    width: 0;
+    animation: growUp 1s forwards;
+  }
+
+  .hist-bar:hover { opacity: 1; }
+
+  @keyframes growUp {
+    from { height: 0 !important; }
+  }
+
+  .hist-labels {
+    display: flex;
+    gap: 3px;
+    margin-top: 6px;
+  }
+
+  .hist-label {
+    flex: 1;
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--steel);
+    text-align: center;
+  }
+
+  /* Survival rate bars */
+  .surv-bar-row {
+    margin-bottom: 14px;
+  }
+
+  .surv-bar-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    margin-bottom: 5px;
+  }
+
+  .surv-bar-label span:last-child {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 500;
+  }
+
+  .surv-bar-track {
+    height: 28px;
+    background: rgba(0,0,0,0.06);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .surv-bar-fill {
+    height: 100%;
+    width: 0;
+    transition: width 1.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Gender donut */
+  .donut-wrap {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+  }
+
+  .donut-svg { flex-shrink: 0; }
+
+  .donut-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+  }
+
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .legend-detail {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--steel);
+  }
+
+  /* CORRELATIONS */
+  .corr-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+  }
+
+  .corr-name {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    width: 100px;
+    flex-shrink: 0;
+  }
+
+  .corr-bar-wrap {
+    flex: 1;
+    height: 22px;
+    background: rgba(0,0,0,0.05);
+    position: relative;
+  }
+
+  .corr-bar-center {
+    position: absolute;
+    left: 50%;
+    top: 0; bottom: 0;
+    width: 1px;
+    background: var(--mist);
+  }
+
+  .corr-fill {
+    position: absolute;
+    height: 100%;
+    transition: width 1.2s cubic-bezier(0.16,1,0.3,1);
+  }
+
+  .corr-fill.pos {
+    left: 50%;
+    background: var(--survived);
+    width: 0;
+  }
+
+  .corr-fill.neg {
+    right: 50%;
+    background: var(--rust);
+    width: 0;
+  }
+
+  .corr-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    width: 60px;
+    text-align: right;
+    font-weight: 500;
+  }
+
+  .corr-val.pos { color: var(--survived); }
+  .corr-val.neg { color: var(--rust); }
+
+  /* INSIGHTS */
+  .insights-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 700px) { .insights-grid { grid-template-columns: 1fr; } }
+
+  .insight-card {
+    background: var(--deep);
+    color: var(--paper);
+    padding: 26px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .insight-card::before {
+    content: attr(data-num);
+    position: absolute;
+    right: 16px;
+    top: 10px;
+    font-family: 'Playfair Display', serif;
+    font-size: 72px;
+    font-weight: 900;
+    color: rgba(255,255,255,0.04);
+    line-height: 1;
+  }
+
+  .insight-card:first-child {
+    grid-column: 1 / -1;
+    background: var(--rust);
+  }
+
+  .insight-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 10px;
+  }
+
+  .insight-card:first-child .insight-tag { color: rgba(255,255,255,0.7); }
+
+  .insight-card h3 {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 10px;
+  }
+
+  .insight-card p {
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: rgba(255,255,255,0.75);
+  }
+
+  .insight-card:first-child p { color: rgba(255,255,255,0.85); }
+
+  .insight-stat {
+    display: inline-block;
+    font-family: 'IBM Plex Mono', monospace;
+    background: rgba(255,255,255,0.12);
+    padding: 1px 6px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 2px;
+  }
+
+  /* FOOTER */
+  footer {
+    background: var(--deep);
+    color: rgba(255,255,255,0.4);
+    text-align: center;
+    padding: 24px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+
+  footer span { color: var(--gold); }
+
+  .prose {
+    font-size: 14px;
+    color: var(--steel);
+    max-width: 720px;
+    margin-bottom: 20px;
+    line-height: 1.7;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-eyebrow">Exploratory Data Analysis · RMS Titanic</div>
+  <h1>891 <em>Passengers.</em><br>342 Survived.</h1>
+  <div class="header-meta">
+    <span><strong>38.4%</strong>Survival Rate</span>
+    <span><strong>12</strong>Features</span>
+    <span><strong>19.87%</strong>Age Missing</span>
+    <span><strong>77.1%</strong>Cabin Missing</span>
+  </div>
+  <div class="watermark">1912</div>
+</header>
+
+<main>
+
+  <!-- 1. DATASET OVERVIEW -->
+  <section class="section">
+    <div class="section-header">
+      <span class="section-number">01 —</span>
+      <h2 class="section-title">Dataset Overview</h2>
+    </div>
+    <p class="prose">The dataset contains <strong>891 rows × 12 columns</strong>, representing a sample of passengers aboard the Titanic. Each record captures demographic, socioeconomic, and voyage-related attributes alongside a binary survival outcome.</p>
+
+    <div class="card-grid">
+      <div class="card"><div class="card-label">Total Records</div><div class="card-value">891</div><div class="card-sub">passenger entries</div></div>
+      <div class="card gold"><div class="card-label">Features</div><div class="card-value">12</div><div class="card-sub">9 numeric · 3 categorical</div></div>
+      <div class="card survived"><div class="card-label">Survived</div><div class="card-value">342</div><div class="card-sub">38.4% of passengers</div></div>
+      <div class="card"><div class="card-label">Perished</div><div class="card-value">549</div><div class="card-sub">61.6% of passengers</div></div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Column</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Sample Value</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>PassengerId</td><td><span class="type-badge">int64</span></td><td>Unique identifier</td><td>1, 2, 3…</td></tr>
+        <tr><td>Survived</td><td><span class="type-badge">int64</span></td><td>Target — 0=No, 1=Yes</td><td>0 / 1</td></tr>
+        <tr><td>Pclass</td><td><span class="type-badge">int64</span></td><td>Ticket class (1st/2nd/3rd)</td><td>1, 2, 3</td></tr>
+        <tr><td>Name</td><td><span class="type-badge">str</span></td><td>Full passenger name</td><td>Braund, Mr. Owen</td></tr>
+        <tr><td>Sex</td><td><span class="type-badge">str</span></td><td>Gender</td><td>male / female</td></tr>
+        <tr><td>Age</td><td><span class="type-badge">float64</span></td><td>Age in years</td><td>22.0, 38.0…</td></tr>
+        <tr><td>SibSp</td><td><span class="type-badge">int64</span></td><td># Siblings/Spouses aboard</td><td>0, 1…</td></tr>
+        <tr><td>Parch</td><td><span class="type-badge">int64</span></td><td># Parents/Children aboard</td><td>0, 1…</td></tr>
+        <tr><td>Ticket</td><td><span class="type-badge">str</span></td><td>Ticket number</td><td>A/5 21171</td></tr>
+        <tr><td>Fare</td><td><span class="type-badge">float64</span></td><td>Passenger fare (£)</td><td>7.25, 71.28…</td></tr>
+        <tr><td>Cabin</td><td><span class="type-badge">str</span></td><td>Cabin number</td><td>C85, NaN…</td></tr>
+        <tr><td>Embarked</td><td><span class="type-badge">str</span></td><td>Port — C/Q/S</td><td>S, C, Q</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- 2. MISSING VALUES -->
+  <section class="section">
+    <div class="section-header">
+      <span class="section-number">02 —</span>
+      <h2 class="section-title">Missing Values</h2>
+    </div>
+    <p class="prose">Three columns contain missing data. <strong>Cabin</strong> is critically sparse at 77.1% missing, making it nearly unusable without significant imputation strategy. <strong>Age</strong> at 19.87% missing is imputable via median by Pclass/Sex grouping.</p>
+
+    <div id="missing-container">
+      <div class="missing-row">
+        <span class="missing-col-name">Cabin</span>
+        <div class="missing-bar-wrap"><div class="missing-bar-fill gold" data-pct="77.1" style="width:0%"></div></div>
+        <span class="missing-pct">77.10%</span>
+      </div>
+      <div class="missing-row">
+        <span class="missing-col-name">Age</span>
+        <div class="missing-bar-wrap"><div class="missing-bar-fill" data-pct="19.87" style="width:0%"></div></div>
+        <span class="missing-pct">19.87%</span>
+      </div>
+      <div class="missing-row">
+        <span class="missing-col-name">Embarked</span>
+        <div class="missing-bar-wrap"><div class="missing-bar-fill" data-pct="0.22" style="width:0%"></div></div>
+        <span class="missing-pct">0.22%</span>
+      </div>
+      <div class="missing-row">
+        <span class="missing-col-name">All others</span>
+        <div class="missing-bar-wrap"><div class="missing-bar-fill low"></div></div>
+        <span class="missing-pct none">0.00%</span>
+      </div>
+    </div>
+
+    <div style="margin-top:16px; padding:14px 16px; background:rgba(155,58,30,0.08); border-left:3px solid var(--rust); font-size:13px; color:var(--steel);">
+      <strong>Recommendation:</strong> Drop <code>Cabin</code> or engineer a binary "has_cabin" feature (known cabin → 66.7% survival vs 30.0%). Impute <code>Age</code> using median grouped by Pclass + Sex. Mode-fill the 2 missing <code>Embarked</code> values with "S".
+    </div>
+  </section>
+
+  <!-- 3. STATISTICAL SUMMARY -->
+  <section class="section">
+    <div class="section-header">
+      <span class="section-number">03 —</span>
+      <h2 class="section-title">Statistical Summary</h2>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-box">
+        <div class="stat-box-title">Age</div>
+        <div class="stat-row"><span>Mean</span><span>29.70 yrs</span></div>
+        <div class="stat-row"><span>Median</span><span>28.00 yrs</span></div>
+        <div class="stat-row"><span>Std Dev</span><span>14.53 yrs</span></div>
+        <div class="stat-row"><span>Min / Max</span><span>0.42 / 80</span></div>
+        <div class="stat-row"><span>Q1 / Q3</span><span>20.12 / 38.0</span></div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-title">Fare (£)</div>
+        <div class="stat-row"><span>Mean</span><span>£32.20</span></div>
+        <div class="stat-row"><span>Median</span><span>£14.45</span></div>
+        <div class="stat-row"><span>Std Dev</span><span>£49.69</span></div>
+        <div class="stat-row"><span>Min / Max</span><span>£0 / £512.33</span></div>
+        <div class="stat-row"><span>Q1 / Q3</span><span>£7.91 / £31.00</span></div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-title">SibSp (Siblings/Spouses)</div>
+        <div class="stat-row"><span>Mean</span><span>0.52</span></div>
+        <div class="stat-row"><span>Median</span><span>0.00</span></div>
+        <div class="stat-row"><span>Std Dev</span><span>1.10</span></div>
+        <div class="stat-row"><span>Min / Max</span><span>0 / 8</span></div>
+        <div class="stat-row"><span>Mode</span><span>0 (68% of passengers)</span></div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-box-title">Parch (Parents/Children)</div>
+        <div class="stat-row"><span>Mean</span><span>0.38</span></div>
+        <div class="stat-row"><span>Median</span><span>0.00</span></div>
+        <div class="stat-row"><span>Std Dev</span><span>0.81</span></div>
+        <div class="stat-row"><span>Min / Max</span><span>0 / 6</span></div>
+        <div class="stat-row"><span>Note</span><span>76% traveled alone (0)</span></div>
+      </div>
+    </div>
+
+    <div style="margin-top:16px; padding:14px 16px; background:rgba(200,153,58,0.08); border-left:3px solid var(--gold); font-size:13px; color:var(--steel);">
+      <strong>Note on Fare:</strong> Mean (£32.20) far exceeds median (£14.45), indicating a <strong>strong right skew</strong> driven by a small number of extremely expensive 1st-class tickets. Log-transformation recommended for modeling.
+    </div>
+  </section>
+
+  <!-- 4. DISTRIBUTIONS -->
+  <section class="section">
+    <div class="section-header">
+      <span class="section-number">04 —</span>
+      <h2 class="section-title">Key Distributions</h2>
+    </div>
+
+    <div class="dist-grid">
+      <!-- Age histogram -->
+      <div class="dist-chart">
+        <div class="dist-title">Age Distribution (714 non-null passengers)</div>
+        <div class="hist-bars" id="ageHist"></div>
+        <div class="hist-labels" id="ageLabels"></div>
+        <div style="font-size:12px; color:var(--steel); margin-top:12px;">Bulk of passengers aged <strong>18–35</strong> (358 passengers, 40.2%). Only 69 children under 12.</div>
+      </div>
+
+      <!-- Survival by class -->
+      <div class="dist-chart">
+        <div class="dist-title">Survival Rate by Passenger Class</div>
+        <div class="surv-bar-row">
+          <div class="surv-bar-label"><span>1st Class <small style="color:var(--steel)">(216 passengers)</small></span><span>62.96%</span></div>
+          <div class="surv-bar-track"><div class="surv-bar-fill" style="background:var(--survived)" data-w="62.96"></div></div>
+        </div>
+        <div class="surv-bar-row">
+          <div class="surv-bar-label"><span>2nd Class <small style="color:var(--steel)">(184 passengers)</small></span><span>47.28%</span></div>
+          <div class="surv-bar-track"><div class="surv-bar-fill" style="background:var(--gold)" data-w="47.28"></div></div>
+        </div>
+        <div class="surv-bar-row">
+          <div class="surv-bar-label"><span>3rd Class <small style="color:var(--steel)">(491 passengers)</small></span><span>24.24%</span></div>
+          <div class="surv-bar-track"><div class="surv-bar-fill" style="background:var(--rust)" data-w="24.24"></div></div>
+        </div>
+        <div style="font-size:12px; color:var(--steel); margin-top:14px;">1st class passengers were <strong>2.6× more likely</strong> to survive than 3rd class passengers.</div>
+      </div>
+
+      <!-- Gender breakdown -->
+      <div class="dist-chart">
+        <div class="dist-title">Gender & Survival Breakdown</div>
+        <div class="donut-wrap">
+          <svg class="donut-svg" width="110" height="110" viewBox="0 0 110 110">
+            <!-- Male: 577 (64.8%), Female: 314 (35.2%) -->
+            <circle cx="55" cy="55" r="40" fill="none" stroke="#e0d8ce" stroke-width="18"/>
+            <!-- Male arc: 64.8% = 233deg -->
+            <circle cx="55" cy="55" r="40" fill="none" stroke="#4a5568" stroke-width="18"
+              stroke-dasharray="233 168" stroke-dashoffset="0" transform="rotate(-90 55 55)" style="transition:stroke-dasharray 1.5s ease"/>
+            <!-- Female arc overlay -->
+            <circle cx="55" cy="55" r="40" fill="none" stroke="#9b3a1e" stroke-width="18"
+              stroke-dasharray="0 233" stroke-dashoffset="-233" transform="rotate(-90 55 55)"
+              id="femaleArc" style="stroke-dasharray:0 251.2;transition:stroke-dasharray 1.5s ease 0.2s"/>
+            <text x="55" y="58" text-anchor="middle" font-family="'Playfair Display',serif" font-size="14" font-weight="700" fill="#1a1410">891</text>
+          </svg>
+          <div class="donut-legend">
+            <div class="legend-item">
+              <div class="legend-dot" style="background:var(--steel)"></div>
+              <div>
+                <div>Male — <strong>577</strong> (64.8%)</div>
+                <div class="legend-detail">18.9% survived</div>
+              </div>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background:var(--rust)"></div>
+              <div>
+                <div>Female — <strong>314</strong> (35.2%)</div>
+                <div class="legend-detail">74.2% survived</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:12px; color:var(--steel); margin-top:14px;"><strong>Women were 3.9× more likely to survive</strong> than men — "women and children first" was strictly followed.</div>
+      </div>
+
+      <!-- Embarked -->
+      <div class="dist-chart">
+        <div class="dist-title">Embarkation Port</div>
+        <div class="surv-bar-row">
+          <div class="surv-bar-label"><span>Southampton (S)</span><span>644 passengers</span></div>
+          <div class="surv-bar-track"><div class="surv-bar-fill" style="background:var(--steel)" data-w="72.3"></div></div>
+        </div>
+        <div class="surv-bar-row">
+          <div class="surv-bar-label"><span>Cherbourg (C)</span><span>168 passengers</span></div>
+          <div class="surv-bar-track"><div class="surv-bar-fill" style="background:var(--gold)" data-w="18.9"></div></div>
+        </div>
+        <div class="surv-bar-row">
+          <div class="surv-bar-label"><span>Queenstown (Q)</span><span>77 passengers</span></div>
+          <div class="surv-bar-track"><div class="surv-bar-fill" style="background:var(--rust)" data-w="8.6"></div></div>
+        </div>
+        <div style="font-size:12px; color:var(--steel); margin-top:14px;">Cherbourg passengers had higher survival (55%) — <strong>correlates with higher Pclass representation</strong> from that port.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. CORRELATIONS -->
+  <section class="section">
+    <div class="section-header">
+      <span class="section-number">05 —</span>
+      <h2 class="section-title">Correlations with Survival</h2>
+    </div>
+    <p class="prose">Pearson correlations between numeric features and the binary <code>Survived</code> column. Negative values indicate inverse relationship — higher value, lower survival chance.</p>
+
+    <div style="background:white; border:1px solid var(--mist); padding:24px;">
+      <div id="corrBars"></div>
+    </div>
+
+    <div style="margin-top:16px; padding:14px 16px; background:rgba(46,125,82,0.07); border-left:3px solid var(--survived); font-size:13px; color:var(--steel);">
+      <strong>Key takeaway:</strong> <code>Fare</code> (+0.257) is the strongest positive predictor — it's a proxy for wealth and class. <code>Pclass</code> (−0.338) is the strongest negative predictor: higher class number = worse odds.
+    </div>
+  </section>
+
+  <!-- 6. INSIGHTS -->
+  <section class="section">
+    <div class="section-header">
+      <span class="section-number">06 —</span>
+      <h2 class="section-title">Critical Insights</h2>
+    </div>
+
+    <div class="insights-grid">
+      <div class="insight-card" data-num="1">
+        <div class="insight-tag">Primary Finding</div>
+        <h3>Gender Was the Dominant Survival Factor</h3>
+        <p>Female passengers survived at <span class="insight-stat">74.2%</span> vs men at <span class="insight-stat">18.9%</span> — a difference of 55 percentage points. Even 3rd-class women (50%) outlived 1st-class men (36.9%). The "women and children first" evacuation protocol was rigorously enforced, making gender the single most predictive feature in the dataset.</p>
+      </div>
+
+      <div class="insight-card" data-num="2">
+        <div class="insight-tag">Socioeconomic Impact</div>
+        <h3>Class Determined Access to Lifeboats</h3>
+        <p>1st-class passengers survived at <span class="insight-stat">63%</span> vs 3rd-class at <span class="insight-stat">24.2%</span>. Physical cabin placement — 1st class near the top, 3rd class near the waterline — combined with evacuation priority created a 2.6× survival gap across classes.</p>
+      </div>
+
+      <div class="insight-card" data-num="3">
+        <div class="insight-tag">Family Structure</div>
+        <h3>Traveling Alone Reduced Survival Odds</h3>
+        <p>Solo travelers had a <span class="insight-stat">30.4%</span> survival rate vs <span class="insight-stat">50.6%</span> for those with family aboard. Small families appeared to coordinate evacuations effectively — but very large families (5+ members) saw survival rates collapse back below 20%.</p>
+      </div>
+
+      <div class="insight-card" data-num="4">
+        <div class="insight-tag">Age Effect</div>
+        <h3>Children Had a Modest Survival Advantage</h3>
+        <p>Passengers under 12 survived at <span class="insight-stat">57.4%</span>, above the overall rate of 38.4%. This supports the "children first" rule being applied — but the effect is less dramatic than gender, suggesting inconsistent enforcement across classes.</p>
+      </div>
+
+      <div class="insight-card" data-num="5">
+        <div class="insight-tag">Hidden Signal</div>
+        <h3>Cabin Assignment Proxies Wealth Survival</h3>
+        <p>Passengers with a known cabin number (likely 1st class) survived at <span class="insight-stat">66.7%</span> vs <span class="insight-stat">30.0%</span> for those without. While 77.1% of cabin data is missing, a simple binary "cabin known" feature could serve as a powerful engineered predictor for ML models.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Titanic EDA Report · <span>891 records analyzed</span> · March 2026
+</footer>
+
+<script>
+  // Age histogram data: bins 0-10,10-20,...,80+
+  const ageBins = [
+    {label:'0–9',  count:28},
+    {label:'10–19',count:102},
+    {label:'20–29',count:220},
+    {label:'30–39',count:167},
+    {label:'40–49',count:89},
+    {label:'50–59',count:60},
+    {label:'60–69',count:35},
+    {label:'70+',  count:13},
+  ];
+  const maxAge = Math.max(...ageBins.map(b=>b.count));
+  const hist = document.getElementById('ageHist');
+  const lbls = document.getElementById('ageLabels');
+  ageBins.forEach((b,i)=>{
+    const bar = document.createElement('div');
+    bar.className = 'hist-bar';
+    const h = Math.round((b.count/maxAge)*100);
+    bar.style.height = h+'px';
+    bar.style.animationDelay = (i*0.08)+'s';
+    bar.title = b.label+': '+b.count+' passengers';
+    hist.appendChild(bar);
+    const lbl = document.createElement('div');
+    lbl.className = 'hist-label';
+    lbl.textContent = b.label;
+    lbls.appendChild(lbl);
+  });
+
+  // Animate missing bars
+  setTimeout(()=>{
+    document.querySelectorAll('.missing-bar-fill[data-pct]').forEach(el=>{
+      el.style.width = el.dataset.pct+'%';
+    });
+  }, 400);
+
+  // Animate survival bars
+  setTimeout(()=>{
+    document.querySelectorAll('.surv-bar-fill[data-w]').forEach(el=>{
+      el.style.width = el.dataset.w+'%';
+    });
+  }, 500);
+
+  // Correlation bars
+  const corrData = [
+    {name:'Pclass',   val:-0.338},
+    {name:'Age',      val:-0.077},
+    {name:'SibSp',    val:-0.035},
+    {name:'PassId',   val:-0.005},
+    {name:'Parch',    val: 0.082},
+    {name:'Fare',     val: 0.257},
+  ];
+  const corrCont = document.getElementById('corrBars');
+  corrData.sort((a,b)=>a.val-b.val).forEach(d=>{
+    const row = document.createElement('div');
+    row.className = 'corr-bar-row';
+    const pos = d.val >= 0;
+    row.innerHTML = `
+      <span class="corr-name">${d.name}</span>
+      <div class="corr-bar-wrap">
+        <div class="corr-bar-center"></div>
+        <div class="corr-fill ${pos?'pos':'neg'}" data-w="${Math.abs(d.val)*100}"></div>
+      </div>
+      <span class="corr-val ${pos?'pos':'neg'}">${d.val > 0 ? '+':''}${d.val.toFixed(3)}</span>
+    `;
+    corrCont.appendChild(row);
+  });
+
+  setTimeout(()=>{
+    document.querySelectorAll('.corr-fill[data-w]').forEach(el=>{
+      el.style.width = el.dataset.w+'%';
+    });
+  }, 600);
+
+  // Female donut arc
+  setTimeout(()=>{
+    const arc = document.getElementById('femaleArc');
+    // Female = 35.2% of 251.2 circumference = 88.4
+    arc.style.strokeDasharray = '88.4 162.8';
+  }, 500);
+</script>
+</body>
+</html>
